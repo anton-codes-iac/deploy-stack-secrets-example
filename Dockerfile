@@ -1,20 +1,25 @@
 FROM node:22-alpine
 
-# 1. DevSecOps: Patch underlying Alpine OS vulnerabilities and update global npm
-RUN apk update && apk upgrade --no-cache && \
-    npm install -g npm@latest
-
-# 2. Set production environment (optimizes Node and prevents dev dependencies)
+# 1. Set production environment
 ENV NODE_ENV=production
-
 WORKDIR /app
 
-# 3. Copy dependency manifests with non-root ownership
+# 2. Copy dependency manifests and install
 COPY --chown=node:node package*.json ./
 RUN npm ci --omit=dev
 
-# 4. Copy application code with non-root ownership
+# 3. Copy application code
 COPY --chown=node:node . .
+
+# 4. DevSecOps: Update OS packages, force the latest npm version, 
+#    and completely purge unused global package managers (yarn, corepack)
+RUN apk update && apk upgrade --no-cache \
+    && npm install -g npm@latest \
+    && rm -rf /opt/yarn-* \
+    && rm -rf /usr/local/bin/yarn \
+    && rm -rf /usr/local/bin/yarnpkg \
+    && rm -rf /usr/local/lib/node_modules/corepack \
+    && rm -rf /usr/local/bin/corepack
 
 # 5. DevSecOps best practice: do not run the container as root
 USER node
