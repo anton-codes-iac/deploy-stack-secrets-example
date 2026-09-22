@@ -51,6 +51,7 @@ git add terraform/secret_keys.json
 git commit -m "chore: map GITHUB_TOKEN to ECS container"
 git push origin main
 ```
+> ⚠️ **Commit this file.** `secret_keys.json` holds key *names* only — never values. It is completely safe for version control and Terraform strictly requires it to map the variables to your ECS container during the GitHub Actions deployment.
 
 ### 4. Verify Live Ingestion
 When your container boots, visit the public ALB URL. The Express service authenticates against GitHub's API using the runtime secret:
@@ -63,6 +64,14 @@ When your container boots, visit the public ALB URL. The Express service authent
   "token_fingerprint": "ghp_...ab12"
 }
 ```
+
+### 🔄 Day-2: Hot Restarts & Team Syncing
+
+Secrets don't stand still. Once the initial vault is provisioned, `deploy-stack` provides native commands to manage drift, rotate keys, and onboard teammates:
+
+* **Live Hot Restarts:** If you only change a secret's *value* (e.g., rotating an existing token) without adding new keys, running `npx deploy-stack secrets push .env` will detect this and offer to trigger an instant rolling ECS restart. The new values go live in seconds without requiring a GitHub push or CI/CD run.
+* **Team Syncing (`pull`):** Did a teammate update a key, or did you get a new laptop? Run `npx deploy-stack secrets pull` to securely merge the live AWS vault down into your local `.env` file.
+* **Drift Detection (`audit`):** Unsure why local works but prod is failing? Run `npx deploy-stack secrets audit` to see a colored diff of your local `.env` versus the live AWS vault (shows missing, mismatched, and untracked variables).
 
 ## 🛑 Safe Teardown
 
